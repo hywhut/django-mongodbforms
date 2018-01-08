@@ -1,10 +1,13 @@
 import sys
 from collections import MutableMapping
+
+from django.apps import apps
 from types import MethodType
 
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.text import capfirst
 from django.utils.functional import LazyObject, new_method_proxy
+
 try:
     # New in Django 1.7+
     from django.utils.text import camel_case_to_spaces
@@ -117,6 +120,11 @@ class DocumentMetaWrapper(MutableMapping):
     concrete_managers = []
     virtual_fields = []
     auto_created = False
+    default_apps = apps
+    concrete_fields = []
+    private_fields = []
+    ordering = None
+    related_fkey_lookups = []
 
     def __init__(self, document, meta=None):
         super(DocumentMetaWrapper, self).__init__()
@@ -146,6 +154,7 @@ class DocumentMetaWrapper(MutableMapping):
         # if 'id_field' in self._meta:
         #    self.pk_name = self._meta['id_field']
         self._init_pk()
+        self.apps = self.default_apps
 
     def _setup_document_fields(self):
         for f in self.document._fields.values():
@@ -205,6 +214,7 @@ class DocumentMetaWrapper(MutableMapping):
 
         def _get_pk_val(obj):
             return obj.pk
+
         patch_document(_get_pk_val, self.document, False)  # document is a class...
 
         if pk_field is not None:
@@ -216,6 +226,11 @@ class DocumentMetaWrapper(MutableMapping):
             # needs to add a hidden pk field. It does not for embedded fields.
             # So we pretend to have an editable pk field and just ignore it otherwise
             self.pk.editable = True
+
+    @property
+    def app_config(self):
+        # Don't go through get_app_config to avoid triggering imports.
+        return self.apps.app_configs.get(self.app_label)
 
     @property
     def app_label(self):
@@ -246,7 +261,10 @@ class DocumentMetaWrapper(MutableMapping):
 
     @property
     def verbose_name_plural(self):
-        return "%ss" % self.verbose_name
+        if self._verbose_name_plural is None:
+            verbose_name_plural = self._meta.get('verbose_name_plural', self.object_name)
+            self._verbose_name_plural = verbose_name_plural if verbose_name_plural else "%ss" % self.verbose_name
+        return self._verbose_name_plural
 
     def get_add_permission(self):
         return 'add_%s' % self.object_name.lower()

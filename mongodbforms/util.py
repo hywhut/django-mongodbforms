@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 from django.conf import settings
 
 from mongodbforms.documentoptions import DocumentMetaWrapper, LazyDocumentMetaWrapper
@@ -13,7 +14,7 @@ except ImportError:
     # pass on this. So we do define it here for now.
     import sys
     from django.core.exceptions import ImproperlyConfigured
-    from django.utils.importlib import import_module
+    from importlib import import_module
     from django.utils import six
 
     def import_by_path(dotted_path, error_prefix=''):

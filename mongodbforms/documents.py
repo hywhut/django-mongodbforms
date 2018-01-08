@@ -3,12 +3,13 @@ import itertools
 from collections import Callable, OrderedDict
 from functools import reduce
 
+from django.forms import BaseModelForm, BaseModelFormSet
 from django.forms.forms import (BaseForm, DeclarativeFieldsMetaclass,
                                 NON_FIELD_ERRORS, pretty_name)
 from django.forms.widgets import media_property
 from django.core.exceptions import FieldError
 from django.core.validators import EMPTY_VALUES
-from django.forms.util import ErrorList
+from django.forms.utils import ErrorList
 from django.forms.formsets import BaseFormSet, formset_factory
 from django.utils.translation import ugettext_lazy as _, ugettext
 from django.utils.text import capfirst, get_valid_filename
@@ -340,7 +341,7 @@ class DocumentFormMetaclass(DeclarativeFieldsMetaclass):
         return new_class
 
 
-class BaseDocumentForm(BaseForm):
+class BaseDocumentForm(BaseModelForm):
 
     def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None,
                  initial=None, error_class=ErrorList, label_suffix=':',
@@ -366,9 +367,9 @@ class BaseDocumentForm(BaseForm):
         # It is False by default so overriding self.clean() and failing to call
         # super will stop validate_unique from being called.
         self._validate_unique = False
-        super(BaseDocumentForm, self).__init__(data, files, auto_id, prefix,
-                                               object_data, error_class,
-                                               label_suffix, empty_permitted)
+        super(BaseDocumentForm, self).__init__(data=data, files=files, auto_id=auto_id, prefix=prefix,
+                                               initial=object_data, error_class=error_class,
+                                               label_suffix=label_suffix, empty_permitted=empty_permitted, instance=instance)
 
     def _update_errors(self, message_dict):
         for k, v in list(message_dict.items()):
@@ -658,7 +659,7 @@ class EmbeddedDocumentForm(with_metaclass(DocumentFormMetaclass,
         return self.instance
 
 
-class BaseDocumentFormSet(BaseFormSet):
+class BaseDocumentFormSet(BaseModelFormSet):
 
     """
     A ``FormSet`` for editing a queryset and/or adding new objects to it.
@@ -937,7 +938,7 @@ def _get_embedded_field(parent_doc, document, emb_name=None, can_fail=False):
                                 (parent_doc, emb_name))
     else:
         emb_fields = [
-            f for f in parent_doc._fields.values()
+            field for field in parent_doc._fields.values()
             if (isinstance(field, EmbeddedDocumentField) and
                 field.document_type == document) or
                (isinstance(field, ListField) and
